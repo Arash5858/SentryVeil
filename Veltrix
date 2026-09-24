@@ -1,0 +1,113 @@
+veltrix/
+├── monitor.py
+├── config.json
+├── requirements.txt
+└── README.md
+import json
+import time
+import requests
+from datetime import datetime
+
+
+def load_config():
+    with open("config.json", "r", encoding="utf-8") as file:
+        return json.load(file)
+
+
+def check_endpoint(name, url, timeout):
+    start = time.perf_counter()
+
+    try:
+        response = requests.get(url, timeout=timeout)
+        latency = round((time.perf_counter() - start) * 1000, 2)
+
+        return {
+            "service": name,
+            "status": "UP" if response.ok else "DEGRADED",
+            "http_code": response.status_code,
+            "latency_ms": latency,
+            "checked_at": datetime.now().isoformat(timespec="seconds")
+        }
+
+    except requests.RequestException as error:
+        latency = round((time.perf_counter() - start) * 1000, 2)
+
+        return {
+            "service": name,
+            "status": "DOWN",
+            "http_code": None,
+            "latency_ms": latency,
+            "error": str(error),
+            "checked_at": datetime.now().isoformat(timespec="seconds")
+        }
+
+
+def main():
+    config = load_config()
+
+    print("\nVeltrix API Monitor")
+    print("-" * 50)
+
+    for service in config["services"]:
+        result = check_endpoint(
+            service["name"],
+            service["url"],
+            config.get("timeout", 5)
+        )
+
+        print(
+            f'{result["service"]:<20} '
+            f'{result["status"]:<10} '
+            f'{result["latency_ms"]} ms'
+        )
+
+
+if __name__ == "__main__":
+    main()
+{
+  "timeout": 5,
+  "services": [
+    {
+      "name": "GitHub",
+      "url": "https://api.github.com"
+    },
+    {
+      "name": "Example API",
+      "url": "https://httpbin.org/status/200"
+    }
+  ]
+}
+requests>=2.32.0
+# Veltrix
+
+A lightweight API health monitoring tool built with Python.
+
+## Features
+
+- Monitor multiple API endpoints
+- Measure response latency
+- Detect unavailable services
+- Identify degraded HTTP responses
+- Simple JSON configuration
+- Zero database dependency
+
+## Installation
+
+```bash
+git clone https://github.com/yourusername/veltrix.git
+cd veltrix
+pip install -r requirements.txt
+{
+  "timeout": 5,
+  "services": [
+    {
+      "name": "My API",
+      "url": "https://api.example.com/health"
+    }
+  ]
+}
+python monitor.py
+Veltrix API Monitor
+--------------------------------------------------
+GitHub               UP         182.41 ms
+Example API          UP         241.73 ms
